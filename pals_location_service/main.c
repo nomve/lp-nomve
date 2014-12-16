@@ -169,19 +169,28 @@ uint32_t temperature_data_get(void)
  *          Also builds a structure to be passed to the stack when starting advertising.
  */
 static void advdata_update(void)
-{
-	
-    uint32_t      	err_code;
+{    uint32_t      	err_code;
     ble_advdata_t 	advdata;
     uint8_t       	flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
-    
-    ble_advdata_manuf_data_t manufacturer_data;
-    
-    uint32_t lat_lng[] = {255,128};
-
-    manufacturer_data.company_identifier = 0x0059; //this is nordics id
-	manufacturer_data.data.size = sizeof(lat_lng);
-	manufacturer_data.data.p_data = (uint8_t *) lat_lng;
+	
+	ble_uuid_t service_uuid;
+	//f4e527e0-820a-11e4-a864-0002a5d5c51b
+	const ble_uuid128_t base_uuid128 =
+    {
+        {
+            0x1b, 0xc5, 0xd5, 0xa5, 0x02, 0x00, 0x64, 0xa8,
+            0xe4, 0x11, 0x0a, 0x82, 0xe0, 0x27, 0xe5, 0xf4
+        }
+    };
+	err_code = sd_ble_uuid_vs_add(&base_uuid128, &(service_uuid.type));
+	service_uuid.uuid = 0xe027;
+	
+	//service data doesn't fit 
+	//use in scan response?
+	//ble_advdata_service_data_t service_data;
+    //service_data.service_uuid = 0xe027;
+    //service_data.data.size    = sizeof(lat_lng);
+    //service_data.data.p_data  = (uint8_t *) lat_lng;
 
     // Build and set advertising data
     memset(&advdata, 0, sizeof(advdata));
@@ -190,7 +199,10 @@ static void advdata_update(void)
     advdata.include_appearance   = false;
     advdata.flags.size           = sizeof(flags);
     advdata.flags.p_data         = &flags;
-	advdata.p_manuf_specific_data = &manufacturer_data;
+    //advdata.service_data_count   = 1;
+    //advdata.p_service_data_array = &service_data;
+    advdata.uuids_complete.uuid_cnt = 1;
+    advdata.uuids_complete.p_uuids  = &service_uuid;
 
     err_code = ble_advdata_set(&advdata, NULL);
     APP_ERROR_CHECK(err_code);
