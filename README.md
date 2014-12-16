@@ -1,5 +1,4 @@
-PALS Location Service
-=======
+##PALS Location Service
 
 To use these files you'll need:
 + Nordic SDK 6.0.0 (6.1.0 or higher will probably work)
@@ -11,8 +10,9 @@ The directory should be placed in the SDK directory nrf51822/Board/pca10001/s110
 
 The project was adapted from the health thermometer example. Most of the code is as of this writing the same, but we are broadcasting different data. It was also modified to work with Softdevice 7.1.0.
 
-Branches
-=======
-*master*: data is placed in the service data part of the advertisement packet
-*ble/manufacturer*: data is placed in the manufacturer data part of the advertisement packet
-*ble/custom-uuid*: broadcasting a custom UUID, data not transmitted atm. If we do it this way, we will need to use a scan response 
+###Branches
+**master**: data is placed in the service data part of the advertisement packet
+
+**ble/manufacturer**: data is placed in the manufacturer data part of the advertisement packet
+
+**ble/custom-uuid**: broadcasting a custom UUID, data not transmitted atm. If we do it this way, we will need to use a scan response 
