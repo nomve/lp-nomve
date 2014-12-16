@@ -1,5 +1,5 @@
 */_build/*
-!*/_build/*.hex
+_build/*.hex
 *.uvgui.*
 *.dep
 *.log
