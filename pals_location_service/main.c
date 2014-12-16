@@ -175,13 +175,13 @@ static void advdata_update(void)
     ble_advdata_t 	advdata;
     uint8_t       	flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
     
-    ble_advdata_service_data_t service_data;
+    ble_advdata_manuf_data_t manufacturer_data;
     
     uint32_t lat_lng[] = {255,128};
 
-    service_data.service_uuid = 0x1819;
-    service_data.data.size    = sizeof(lat_lng);
-    service_data.data.p_data  = (uint8_t *) lat_lng;
+    manufacturer_data.company_identifier = 0x0059; //this is nordics id
+	manufacturer_data.data.size = sizeof(lat_lng);
+	manufacturer_data.data.p_data = (uint8_t *) lat_lng;
 
     // Build and set advertising data
     memset(&advdata, 0, sizeof(advdata));
@@ -190,8 +190,7 @@ static void advdata_update(void)
     advdata.include_appearance   = false;
     advdata.flags.size           = sizeof(flags);
     advdata.flags.p_data         = &flags;
-    advdata.service_data_count   = 1;
-    advdata.p_service_data_array = &service_data;
+	advdata.p_manuf_specific_data = &manufacturer_data;
 
     err_code = ble_advdata_set(&advdata, NULL);
     APP_ERROR_CHECK(err_code);
