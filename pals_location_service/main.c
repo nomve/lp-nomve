@@ -27,6 +27,8 @@
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT      0                                          /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
+#define TX_POWER							4
+
 #define ADV_INTERVAL_IN_MS              	1200
 #define VBAT_MAX_IN_MV                  	3300
 
@@ -109,16 +111,20 @@ static void gap_params_init(void)
 {
     uint32_t                err_code;
     ble_gap_conn_sec_mode_t sec_mode;
-    
     char name_buffer[4] = "PALS";
     
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
+	
+	err_code = sd_ble_gap_tx_power_set(TX_POWER);
+	APP_ERROR_CHECK(err_code);
     
     err_code = sd_ble_gap_device_name_set(&sec_mode,
                                           (const uint8_t *)name_buffer, 
                                           strlen(name_buffer));
-    APP_ERROR_CHECK(err_code);  
+    APP_ERROR_CHECK(err_code);
+
 }
+
 
 uint8_t battery_level_get(void)
 {
@@ -173,11 +179,13 @@ static void advdata_update(void)
 	
     uint32_t      	err_code;
     ble_advdata_t 	advdata;
-    uint8_t       	flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
+    uint8_t       	flags		= BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
+	int8_t			tx_power	= TX_POWER;
     
     ble_advdata_service_data_t service_data;
     
-    uint32_t lat_lng[] = {255,128};
+	//lab position in B11, i.e. lat50.972876
+    uint32_t lat_lng[] = {509728760, 113293670};
 
     service_data.service_uuid = 0x1819;
     service_data.data.size    = sizeof(lat_lng);
@@ -186,12 +194,17 @@ static void advdata_update(void)
     // Build and set advertising data
     memset(&advdata, 0, sizeof(advdata));
 
-    advdata.name_type            = BLE_ADVDATA_FULL_NAME;
-    advdata.include_appearance   = false;
-    advdata.flags.size           = sizeof(flags);
-    advdata.flags.p_data         = &flags;
-    advdata.service_data_count   = 1;
-    advdata.p_service_data_array = &service_data;
+    advdata.name_type				= BLE_ADVDATA_FULL_NAME;
+	
+    advdata.include_appearance		= false;
+	
+    advdata.flags.size				= sizeof(flags);
+    advdata.flags.p_data			= &flags;
+	
+    advdata.service_data_count		= 1;
+    advdata.p_service_data_array	= &service_data;
+	
+	advdata.p_tx_power_level		= &tx_power;
 
     err_code = ble_advdata_set(&advdata, NULL);
     APP_ERROR_CHECK(err_code);
