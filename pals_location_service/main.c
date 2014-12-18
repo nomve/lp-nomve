@@ -169,11 +169,19 @@ uint32_t temperature_data_get(void)
  *          Also builds a structure to be passed to the stack when starting advertising.
  */
 static void advdata_update(void)
-{    uint32_t      	err_code;
+{   
+	uint32_t      	err_code;
+	//data to be placed in the advertisement
     ble_advdata_t 	advdata;
+	//data to be placed in the scan response
+    ble_advdata_t 	srdata;
+	//ble only flag
     uint8_t       	flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
-	
+	//service data: uuid + data
+	ble_advdata_service_data_t service_data;
+	//new service uuid
 	ble_uuid_t service_uuid;
+	//new base uuid
 	//f4e527e0-820a-11e4-a864-0002a5d5c51b
 	const ble_uuid128_t base_uuid128 =
     {
@@ -184,13 +192,6 @@ static void advdata_update(void)
     };
 	err_code = sd_ble_uuid_vs_add(&base_uuid128, &(service_uuid.type));
 	service_uuid.uuid = 0xe027;
-	
-	//service data doesn't fit 
-	//use in scan response?
-	//ble_advdata_service_data_t service_data;
-    //service_data.service_uuid = 0xe027;
-    //service_data.data.size    = sizeof(lat_lng);
-    //service_data.data.p_data  = (uint8_t *) lat_lng;
 
     // Build and set advertising data
     memset(&advdata, 0, sizeof(advdata));
@@ -199,12 +200,23 @@ static void advdata_update(void)
     advdata.include_appearance   = false;
     advdata.flags.size           = sizeof(flags);
     advdata.flags.p_data         = &flags;
-    //advdata.service_data_count   = 1;
-    //advdata.p_service_data_array = &service_data;
     advdata.uuids_complete.uuid_cnt = 1;
     advdata.uuids_complete.p_uuids  = &service_uuid;
+	
+	//service data doesn't fit in ad. packet
+	//place in scan response
+	uint32_t lat_lng[] = {509728760, 113293670};
+    service_data.service_uuid = 0xe027;
+    service_data.data.size    = sizeof(lat_lng);
+    service_data.data.p_data  = (uint8_t *) lat_lng;
+	
+	//build scan response data
+    memset(&srdata, 0, sizeof(srdata));
+	
+    srdata.service_data_count   = 1;
+    srdata.p_service_data_array = &service_data;
 
-    err_code = ble_advdata_set(&advdata, NULL);
+    err_code = ble_advdata_set(&advdata, &srdata);
     APP_ERROR_CHECK(err_code);
 }
 
