@@ -191,7 +191,7 @@ static void advdata_update(void)
         }
     };
 	err_code = sd_ble_uuid_vs_add(&base_uuid128, &(service_uuid.type));
-	service_uuid.uuid = 0xe027;
+	service_uuid.uuid = 0x27e0;
 
     // Build and set advertising data
     memset(&advdata, 0, sizeof(advdata));
@@ -206,7 +206,7 @@ static void advdata_update(void)
 	//service data doesn't fit in ad. packet
 	//place in scan response
 	uint32_t lat_lng[] = {509728760, 113293670};
-    service_data.service_uuid = 0xe027;
+    service_data.service_uuid = 0x27e0;
     service_data.data.size    = sizeof(lat_lng);
     service_data.data.p_data  = (uint8_t *) lat_lng;
 	
