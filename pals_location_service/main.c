@@ -190,7 +190,7 @@ static void advdata_update(void)
             0xe4, 0x11, 0x0a, 0x82, 0xe0, 0x27, 0xe5, 0xf4
         }
     };
-	err_code = sd_ble_uuid_vs_add(&base_uuid128, &(service_uuid.type));
+	
 	service_uuid.uuid = 0x27e0;
 
     // Build and set advertising data

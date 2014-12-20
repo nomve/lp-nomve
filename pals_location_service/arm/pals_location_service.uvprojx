@@ -428,6 +428,11 @@
               <FileType>1</FileType>
               <FilePath>.\..\main.c</FilePath>
             </File>
+            <File>
+              <FileName>ble_pals.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\ble_pals.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -901,6 +906,11 @@
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\..\main.c</FilePath>
+            </File>
+            <File>
+              <FileName>ble_pals.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\ble_pals.c</FilePath>
             </File>
           </Files>
         </Group>
