@@ -24,6 +24,7 @@
 #include "app_timer.h"
 #include "ble_debug_assert_handler.h"
 #include "nrf_soc.h"
+#include "ble_pals.h"
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT      0                                          /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
@@ -44,7 +45,9 @@
 #define DEAD_BEEF                       	0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 
-static app_timer_id_t m_advdata_update_timer;
+static app_timer_id_t						m_advdata_update_timer;
+//custom service
+static ble_pals_t							m_pals;
 
 /**@brief Function for error handling, which is called when an error has occurred. 
  *
@@ -120,46 +123,14 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);  
 }
 
-uint8_t battery_level_get(void)
+/**@brief Function for initializing services that will be used by the application.
+ */
+static void services_init(void)
 {
-    // Configure ADC
-    NRF_ADC->CONFIG     = (ADC_CONFIG_RES_8bit                        << ADC_CONFIG_RES_Pos)     |
-                          (ADC_CONFIG_INPSEL_SupplyOneThirdPrescaling << ADC_CONFIG_INPSEL_Pos)  |
-                          (ADC_CONFIG_REFSEL_VBG                      << ADC_CONFIG_REFSEL_Pos)  |
-                          (ADC_CONFIG_PSEL_Disabled                   << ADC_CONFIG_PSEL_Pos)    |
-                          (ADC_CONFIG_EXTREFSEL_None                  << ADC_CONFIG_EXTREFSEL_Pos);
-    NRF_ADC->EVENTS_END = 0;
-    NRF_ADC->ENABLE     = ADC_ENABLE_ENABLE_Enabled;
-
-    NRF_ADC->EVENTS_END  = 0;    // Stop any running conversions.
-    NRF_ADC->TASKS_START = 1;
-    
-    while (!NRF_ADC->EVENTS_END)
-    {
-    }
-    
-    uint16_t vbg_in_mv = 1200;
-    uint8_t adc_max = 255;
-    uint16_t vbat_current_in_mv = (NRF_ADC->RESULT * 3 * vbg_in_mv) / adc_max;
-    
-    NRF_ADC->EVENTS_END     = 0;
-    NRF_ADC->TASKS_STOP     = 1;
-    
-    return (uint8_t) ((vbat_current_in_mv * 100) / VBAT_MAX_IN_MV);
-}
-
-uint32_t temperature_data_get(void)
-{
-    int32_t temp;
     uint32_t err_code;
     
-    err_code = sd_temp_get(&temp);
+    err_code = ble_pals_init(&m_pals);
     APP_ERROR_CHECK(err_code);
-    
-    temp = (temp / 4) * 100;
-    
-    int8_t exponent = -2;
-    return ((exponent & 0xFF) << 24) | (temp & 0x00FFFFFF);
 }
 
 
@@ -179,19 +150,8 @@ static void advdata_update(void)
     uint8_t       	flags = BLE_GAP_ADV_FLAG_BR_EDR_NOT_SUPPORTED;
 	//service data: uuid + data
 	ble_advdata_service_data_t service_data;
-	//new service uuid
-	ble_uuid_t service_uuid;
-	//new base uuid
-	//f4e527e0-820a-11e4-a864-0002a5d5c51b
-	const ble_uuid128_t base_uuid128 =
-    {
-        {
-            0x1b, 0xc5, 0xd5, 0xa5, 0x02, 0x00, 0x64, 0xa8,
-            0xe4, 0x11, 0x0a, 0x82, 0xe0, 0x27, 0xe5, 0xf4
-        }
-    };
 	
-	service_uuid.uuid = 0x27e0;
+	ble_uuid_t adv_uuids[] = {{PALS_UUID_SERVICE, m_pals.uuid_type}};
 
     // Build and set advertising data
     memset(&advdata, 0, sizeof(advdata));
@@ -200,13 +160,13 @@ static void advdata_update(void)
     advdata.include_appearance   = false;
     advdata.flags.size           = sizeof(flags);
     advdata.flags.p_data         = &flags;
-    advdata.uuids_complete.uuid_cnt = 1;
-    advdata.uuids_complete.p_uuids  = &service_uuid;
+	advdata.uuids_complete.uuid_cnt = 1;
+    advdata.uuids_complete.p_uuids  = adv_uuids;
 	
 	//service data doesn't fit in ad. packet
 	//place in scan response
 	uint32_t lat_lng[] = {509728760, 113293670};
-    service_data.service_uuid = 0x27e0;
+    service_data.service_uuid = PALS_UUID_SERVICE;
     service_data.data.size    = sizeof(lat_lng);
     service_data.data.p_data  = (uint8_t *) lat_lng;
 	
@@ -357,6 +317,7 @@ int main(void)
     leds_init();
     ble_stack_init();
     gap_params_init();
+	services_init();
     timers_init();
     advdata_update();
     
