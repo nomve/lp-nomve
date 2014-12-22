@@ -21,5 +21,7 @@ typedef struct ble_pals_s
 } ble_pals_t;
 
 
+uint32_t ble_pals_init( ble_pals_t * p_pals );
+
 
 #endif
