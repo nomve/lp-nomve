@@ -16,12 +16,14 @@
 typedef struct ble_pals_s
 {
 	uint16_t					service_handle;
-	ble_gatts_char_handles_t	location_char_handles;
 	uint8_t						uuid_type;
+	ble_gatts_char_handles_t	location_char_handles;
 } ble_pals_t;
 
 
 uint32_t ble_pals_init( ble_pals_t * p_pals, const uint32_t pals_lat_lng[] );
+
+void ble_pals_on_ble_evt( ble_pals_t * p_pals, ble_evt_t * p_ble_evt );
 
 
 #endif

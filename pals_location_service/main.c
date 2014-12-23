@@ -19,12 +19,14 @@
 #include "ble_hci.h"
 #include "ble_srv_common.h"
 #include "ble_advdata.h"
+#include "ble_conn_params.h"
 #include "boards.h"
 #include "softdevice_handler.h"
 #include "app_timer.h"
 #include "ble_debug_assert_handler.h"
 #include "nrf_soc.h"
 #include "ble_pals.h"
+
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT      0                                          /**< Include or not the service_changed characteristic. if not enabled, the server's database cannot be changed for the lifetime of the device*/
 
@@ -38,9 +40,13 @@
 #define ADV_TIMEOUT_IN_SECONDS          	0                                           /**< The advertising timeout (in units of seconds). */
 
 #define APP_TIMER_PRESCALER             	0                                           /**< Value of the RTC1 PRESCALER register. */
-#define APP_TIMER_MAX_TIMERS            	1                                           /**< Maximum number of simultaneously created timers. */
+#define APP_TIMER_MAX_TIMERS            	2                                           /**< Maximum number of simultaneously created timers. */
 #define APP_TIMER_OP_QUEUE_SIZE         	4                                           /**< Size of timer operation queues. */
 #define ADVDATA_UPDATE_INTERVAL         	APP_TIMER_TICKS(ADV_INTERVAL_IN_MS, APP_TIMER_PRESCALER)
+
+#define FIRST_CONN_PARAMS_UPDATE_DELAY  	APP_TIMER_TICKS(15000, APP_TIMER_PRESCALER) /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (15 seconds). */
+#define NEXT_CONN_PARAMS_UPDATE_DELAY   	APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time between each call to sd_ble_gap_conn_param_update after the first call (5 seconds). */
+#define MAX_CONN_PARAMS_UPDATE_COUNT    	3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 
 #define DEAD_BEEF                       	0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
@@ -48,6 +54,8 @@
 static app_timer_id_t						m_advdata_update_timer;
 //custom service
 static ble_pals_t							m_pals;
+//connection 
+static uint16_t                         	m_conn_handle = BLE_CONN_HANDLE_INVALID; 
 //location
 static uint32_t								pals_lat_lng[] = {509728760, 113293670};
 
@@ -122,7 +130,7 @@ static void gap_params_init(void)
     err_code = sd_ble_gap_device_name_set(&sec_mode,
                                           (const uint8_t *)name_buffer, 
                                           strlen(name_buffer));
-    APP_ERROR_CHECK(err_code);  
+    APP_ERROR_CHECK(err_code);
 }
 
 /**@brief Function for initializing services that will be used by the application.
@@ -132,6 +140,61 @@ static void services_init(void)
     uint32_t err_code;
     
     err_code = ble_pals_init(&m_pals, pals_lat_lng);
+    APP_ERROR_CHECK(err_code);
+}
+
+
+/**@brief Function for handling the Connection Parameters Module.
+ *
+ * @details This function will be called for all events in the Connection Parameters Module which
+ *          are passed to the application.
+ *          @note All this function does is to disconnect. This could have been done by simply
+ *                setting the disconnect_on_fail config parameter, but instead we use the event
+ *                handler mechanism to demonstrate its use.
+ *
+ * @param[in]   p_evt   Event received from the Connection Parameters Module.
+ */
+static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
+{
+    uint32_t err_code;
+
+    if(p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)
+    {
+        err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
+        APP_ERROR_CHECK(err_code);
+    }
+}
+
+
+/**@brief Function for handling a Connection Parameters error.
+ *
+ * @param[in]   nrf_error   Error code containing information about what went wrong.
+ */
+static void conn_params_error_handler(uint32_t nrf_error)
+{
+    APP_ERROR_HANDLER(nrf_error);
+}
+
+
+/**@brief Function for initializing the Connection Parameters module.
+ */
+static void conn_params_init(void)
+{
+    uint32_t               err_code;
+    ble_conn_params_init_t cp_init;
+
+    memset(&cp_init, 0, sizeof(cp_init));
+
+    cp_init.p_conn_params                  = NULL;
+    cp_init.first_conn_params_update_delay = FIRST_CONN_PARAMS_UPDATE_DELAY;
+    cp_init.next_conn_params_update_delay  = NEXT_CONN_PARAMS_UPDATE_DELAY;
+    cp_init.max_conn_params_update_count   = MAX_CONN_PARAMS_UPDATE_COUNT;
+    cp_init.start_on_notify_cccd_handle    = BLE_GATT_HANDLE_INVALID;
+    cp_init.disconnect_on_fail             = false;
+    cp_init.evt_handler                    = on_conn_params_evt;
+    cp_init.error_handler                  = conn_params_error_handler;
+
+    err_code = ble_conn_params_init(&cp_init);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -218,7 +281,7 @@ static void advertising_start(void)
     // Start advertising
     memset(&adv_params, 0, sizeof(adv_params));
     
-    adv_params.type        = BLE_GAP_ADV_TYPE_ADV_SCAN_IND;
+    adv_params.type        = BLE_GAP_ADV_TYPE_ADV_IND;
     adv_params.p_peer_addr = NULL;
     adv_params.fp          = BLE_GAP_ADV_FP_ANY;
     adv_params.interval    = ADV_INTERVAL;
@@ -236,15 +299,28 @@ static void advertising_start(void)
  */
 static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
-    uint32_t err_code = NRF_SUCCESS;
-    
+    //uint32_t                         err_code;
+
     switch (p_ble_evt->header.evt_id)
     {
+        case BLE_GAP_EVT_CONNECTED:
+            nrf_gpio_pin_set(CONNECTED_LED_PIN_NO);
+            nrf_gpio_pin_clear(ADVERTISING_LED_PIN_NO);
+            m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+		
+            break;
+
+        case BLE_GAP_EVT_DISCONNECTED:
+            nrf_gpio_pin_clear(CONNECTED_LED_PIN_NO);
+            m_conn_handle = BLE_CONN_HANDLE_INVALID;
+            
+            advertising_start();
+            break;
+
         default:
+            // No implementation needed.
             break;
     }
-
-    APP_ERROR_CHECK(err_code);
 }
 
 
@@ -258,6 +334,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
 {
     on_ble_evt(p_ble_evt);
+	ble_conn_params_on_ble_evt(p_ble_evt);
+    ble_pals_on_ble_evt(&m_pals, p_ble_evt);
 }
 
 
@@ -320,6 +398,7 @@ int main(void)
 	services_init();
     timers_init();
     advdata_update();
+	conn_params_init();
     
     // Start execution
     timers_start();
