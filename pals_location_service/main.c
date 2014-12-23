@@ -48,6 +48,8 @@
 static app_timer_id_t						m_advdata_update_timer;
 //custom service
 static ble_pals_t							m_pals;
+//location
+static uint32_t								pals_lat_lng[] = {509728760, 113293670};
 
 /**@brief Function for error handling, which is called when an error has occurred. 
  *
@@ -129,7 +131,7 @@ static void services_init(void)
 {
     uint32_t err_code;
     
-    err_code = ble_pals_init(&m_pals);
+    err_code = ble_pals_init(&m_pals, pals_lat_lng);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -155,6 +157,8 @@ static void advdata_update(void)
 
     // Build and set advertising data
     memset(&advdata, 0, sizeof(advdata));
+	//build scan response data
+    memset(&srdata, 0, sizeof(srdata));
 
     advdata.name_type            = BLE_ADVDATA_FULL_NAME;
     advdata.include_appearance   = false;
@@ -165,13 +169,9 @@ static void advdata_update(void)
 	
 	//service data doesn't fit in ad. packet
 	//place in scan response
-	uint32_t lat_lng[] = {509728760, 113293670};
     service_data.service_uuid = PALS_UUID_SERVICE;
-    service_data.data.size    = sizeof(lat_lng);
-    service_data.data.p_data  = (uint8_t *) lat_lng;
-	
-	//build scan response data
-    memset(&srdata, 0, sizeof(srdata));
+    service_data.data.size    = sizeof(pals_lat_lng);
+    service_data.data.p_data  = (uint8_t *) pals_lat_lng;
 	
     srdata.service_data_count   = 1;
     srdata.p_service_data_array = &service_data;
@@ -218,7 +218,7 @@ static void advertising_start(void)
     // Start advertising
     memset(&adv_params, 0, sizeof(adv_params));
     
-    adv_params.type        = BLE_GAP_ADV_TYPE_ADV_NONCONN_IND;
+    adv_params.type        = BLE_GAP_ADV_TYPE_ADV_SCAN_IND;
     adv_params.p_peer_addr = NULL;
     adv_params.fp          = BLE_GAP_ADV_FP_ANY;
     adv_params.interval    = ADV_INTERVAL;

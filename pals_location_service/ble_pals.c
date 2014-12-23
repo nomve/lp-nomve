@@ -1,7 +1,7 @@
 #include "ble_pals.h"
 #include <string.h>
 
-static uint32_t pals_location_char_add( ble_pals_t * p_pals ) {
+static uint32_t pals_location_char_add( ble_pals_t * p_pals, const uint32_t pals_lat_lng[] ) {
 	
 	ble_gatts_char_md_t 	char_md;
     ble_uuid_t          	ble_uuid;
@@ -41,7 +41,7 @@ static uint32_t pals_location_char_add( ble_pals_t * p_pals ) {
 	
 	attr_char_value.p_attr_md 	= &attr_md;
 	attr_char_value.p_uuid 		= &ble_uuid;
-	attr_char_value.p_value		= NULL;
+	attr_char_value.p_value		= (uint8_t *) pals_lat_lng;
 	
 	attr_char_value.init_len	= sizeof(uint32_t) * 2;
 	attr_char_value.init_offs	= 0;
@@ -53,7 +53,7 @@ static uint32_t pals_location_char_add( ble_pals_t * p_pals ) {
 												&p_pals->location_char_handles );
 }
 
-uint32_t ble_pals_init( ble_pals_t * p_pals ) {
+uint32_t ble_pals_init( ble_pals_t * p_pals, const uint32_t pals_lat_lng[] ) {
 	
 	uint32_t		err_code;
 	ble_uuid_t		ble_uuid;
@@ -77,7 +77,7 @@ uint32_t ble_pals_init( ble_pals_t * p_pals ) {
 		return err_code;
 	
 	//add location characteristic
-	err_code = pals_location_char_add( p_pals );
+	err_code = pals_location_char_add( p_pals, pals_lat_lng );
 	
 	return NRF_SUCCESS;
 }
