@@ -185,7 +185,8 @@ static void advdata_update(void)
     ble_advdata_service_data_t service_data;
     
 	//lab position in B11, i.e. lat50.972876
-    uint32_t lat_lng[] = {509728760, 113293670};
+	//hannover messe, halle 9, b18 52.321053, 9.811098
+    uint32_t lat_lng[] = {523210530, 98110980};
 
     service_data.service_uuid = 0x1819;
     service_data.data.size    = sizeof(lat_lng);
